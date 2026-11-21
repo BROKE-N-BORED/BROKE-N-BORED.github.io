@@ -145,6 +145,13 @@ canvas#paintCanvas{touch-action:none; border-radius:10px; box-shadow:0 4px 24px 
 .stk-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px;}
 .stk-grid button{background:var(--panel2); border:1px solid var(--line); border-radius:10px; height:52px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:4px;}
 .stk-grid button canvas{max-width:100%; max-height:100%;}
+.stk-grid button.art{background-color:#3a3a44; background-image:conic-gradient(#5c5c68 25%, #43434e 0 50%, #5c5c68 0 75%, #43434e 0); background-size:14px 14px; padding:2px;}
+.stk-grid button.art.armed{outline:3px solid var(--teal); outline-offset:1px;}
+#brushPreview{background-image:conic-gradient(#c9c9c9 25%, #f4f4f4 0 50%, #c9c9c9 0 75%, #f4f4f4 0); background-size:22px 22px; border-radius:10px; box-shadow:0 4px 18px rgba(0,0,0,.5);}
+.blayer{display:flex; gap:8px; align-items:flex-start; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px; margin:6px 0;}
+.blayer img{width:44px; height:44px; border-radius:8px; flex:0 0 44px; background-color:#3a3a44; background-image:conic-gradient(#5c5c68 25%, #43434e 0 50%, #5c5c68 0 75%, #43434e 0); background-size:10px 10px;}
+.blayer .ctl{flex:1; min-width:0;}
+.blayer select{width:100%; margin-top:4px;}
 .stk-grid button img{max-width:100%; max-height:44px;}
 .dabdot{width:22px; height:22px; border-radius:50%; border:1px solid rgba(0,0,0,.5); display:inline-block;}
 /* stamps */
@@ -305,6 +312,7 @@ canvas#stampCanvas{touch-action:none; border-radius:10px; box-shadow:0 4px 18px 
                   <option value="lighten">🔆 Lighten</option>
                   <option value="darken">🌑 Darken</option>
                   <option value="clone">👥 Clone stamp</option>
+                  <option value="custombrush">🖌 My brush (from Brushes tab)</option>
                   <option value="gradient">🎆 Gradient fill</option>
                   <option value="shapes">🔷 Shapes</option>
                 </select>
@@ -379,8 +387,8 @@ canvas#stampCanvas{touch-action:none; border-radius:10px; box-shadow:0 4px 18px 
               </div>
             </div>
             <div class="acc" id="accStickers">
-              <button class="acc-head" type="button">Stickers &amp; stamps <span class="chev">▸</span></button>
-              <div class="acc-body"><div id="stickerLib"></div>
+              <button class="acc-head" type="button">Stamps &amp; stickers <span class="chev">▸</span></button>
+              <div class="acc-body"><div class="btnrow" style="margin-bottom:8px;"><button class="btn small teal" id="btnMakeSticker">✂ Make sticker from my painting</button></div><div id="stickerLib"></div>
                 <div id="stickerCtl" class="hidden" style="margin-top:10px; border-top:1px solid var(--line); padding-top:8px;">
                   <div style="font-weight:800; font-size:13px;" id="stickerName">Sticker</div>
                   <label class="lbl">Size · <span id="stkSizeVal">220</span></label>
@@ -389,8 +397,6 @@ canvas#stampCanvas{touch-action:none; border-radius:10px; box-shadow:0 4px 18px 
                   <input type="range" id="stkRot" min="-180" max="180" value="0">
                   <label class="lbl">See-through · <span id="stkOpVal">100</span>%</label>
                   <input type="range" id="stkOp" min="5" max="100" value="100">
-                  <label class="lbl">Fill (shapes only)</label>
-                  <select id="stkFill"><option value="solid">Solid — brush color</option><option value="gradient">Gradient — brush → 2nd color</option></select>
                   <div class="btnrow" style="margin-top:8px;">
                     <button class="btn small" id="btnStkFlip">↔ Flip</button>
                     <button class="btn small primary" id="btnStkStamp">✔ Stamp it</button>
@@ -443,6 +449,32 @@ canvas#stampCanvas{touch-action:none; border-radius:10px; box-shadow:0 4px 18px 
       </div>
     </section>
 
+    <!-- ============ BRUSHES ============ -->
+    <section class="view" id="view-brushes">
+      <div class="scroll" style="padding:0 12px 12px;">
+        <div style="display:flex; justify-content:center; padding:12px 0 4px;"><canvas id="brushPreview" width="480" height="480" style="width:min(300px,80vw); height:min(300px,80vw);"></canvas></div>
+        <div class="note" style="text-align:center;">Preview — the grey-and-white grid is the see-through part.</div>
+        <label class="lbl">Brush size · <span id="brushBSizeVal">220</span></label>
+        <input type="range" id="brushBSize" min="40" max="640" value="220">
+        <label class="lbl">Rotation · <span id="brushBRotVal">0</span>°</label>
+        <input type="range" id="brushBRot" min="0" max="360" value="0">
+        <div class="lbl" style="margin-top:10px;">Layers — the top of this list paints on top</div>
+        <div id="brushLayers"></div>
+        <div class="btnrow"><button class="btn small teal" id="btnBrushAddLayer">＋ Add a stamp layer</button></div>
+        <div id="brushPicker" class="hidden" style="margin-top:8px;">
+          <div class="lbl">Tap one of your saved stamps or stickers to add it as a layer</div>
+          <div class="stk-grid" id="brushPickerGrid"></div>
+        </div>
+        <div class="btnrow" style="margin-top:10px;">
+          <input type="text" id="brushName" placeholder="Name your brush…" style="flex:1">
+          <button class="btn primary" id="btnBrushSave">Save brush</button>
+        </div>
+        <div class="note" style="margin-top:4px;">Saved brushes live in Paint under “Stamps &amp; stickers → My brushes”. Pick one there, then paint — the layered stack is your brush tip.</div>
+        <div class="lbl" style="margin-top:14px;">My brushes</div>
+        <div id="brushSavedList"></div>
+      </div>
+    </section>
+
     <!-- ============ STAMPS ============ -->
     <section class="view" id="view-stamps">
       <div id="stampHolder"><canvas id="stampCanvas" width="480" height="480"></canvas></div>
@@ -462,7 +494,7 @@ canvas#stampCanvas{touch-action:none; border-radius:10px; box-shadow:0 4px 18px 
           <input type="text" id="stampName" placeholder="Name your stamp…" style="flex:1">
           <button class="btn primary" id="btnStampSave">Save stamp</button>
         </div>
-        <div class="note" style="margin-top:4px;">Draw on the checkerboard — whatever shows the grid stays see-through. Saved stamps land in Paint under “My stamps”.</div>
+        <div class="note" style="margin-top:4px;">Draw on the checkerboard — whatever shows the grid stays see-through. Saved stamps land in Paint under “Stamps &amp; stickers”.</div>
       </div>
       <div class="scroll" id="stampScroll"><div id="stampList"></div></div>
     </section>
@@ -505,6 +537,7 @@ canvas#stampCanvas{touch-action:none; border-radius:10px; box-shadow:0 4px 18px 
     <button data-tab="chat"><span class="ic">💬</span>Chat</button>
     <button data-tab="library"><span class="ic">🎨</span>Library</button>
     <button data-tab="paint"><span class="ic">🖌</span>Paint</button>
+    <button data-tab="brushes"><span class="ic">🖌️</span>Brushes</button>
     <button data-tab="stamps"><span class="ic">🔖</span>Stamps</button>
     <button data-tab="menu"><span class="ic">☰</span>Menu</button>
   </nav>
@@ -696,6 +729,8 @@ function loadState(){
 function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){ toast('Storage is full — export a backup from Menu'); } }
 S=loadState();
 if(!S.chat) S.chat=[];
+if(!Array.isArray(S.stickers)) S.stickers=[];
+if(!Array.isArray(S.brushes)) S.brushes=[];
 if(!S.chat.length){
   S.chat.push({who:'sys', text:'Hey — this is your palette studio as a plain website. Send a photo and I\'ll pull its real colors out as a palette — however many it actually has. Your library came along from the old Space: '+S.palettes.length+' palettes are in the Library tab.'});
   saveState();
@@ -706,10 +741,11 @@ function showTab(tab){
   currentTab=tab;
   $$('#tabbar button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
   $$('.view').forEach(v=>v.classList.remove('active'));
-  const map={chat:'view-chat', library:'view-library', paint:'view-paint', stamps:'view-stamps', menu:'view-menu', editor:'view-editor'};
+  const map={chat:'view-chat', library:'view-library', paint:'view-paint', brushes:'view-brushes', stamps:'view-stamps', menu:'view-menu', editor:'view-editor'};
   $('#'+map[tab]).classList.add('active');
   if(tab==='library') renderLibrary();
   if(tab==='paint'){ renderPaintSide(); sizePaintCanvas(); }
+  if(tab==='brushes'){ renderBrushTab(); }
   if(tab==='stamps'){ renderStampTab(); }
   window.scrollTo(0,0);
 }
@@ -1259,7 +1295,7 @@ function sampleComposite(x,y){
 let cloneSrc=null, cloneOffset=null;
 function beginStroke(p, e){
   const tool=toolNow(); stroke={tool, last:p, mid:p, lastStamp:p, hue:Math.random()*360, bbox:{x0:p.x,y0:p.y,x1:p.x,y1:p.y}, snap:null, shapeStart:p, wet:null};
-  if(['paint','rainbow','glow','lighten','darken','eraser','blend','knife','push','clone','fill','gradient','shapes','blur','sharpen'].includes(tool)) pushUndo();
+  if(['paint','rainbow','glow','lighten','darken','eraser','blend','knife','push','clone','fill','gradient','shapes','blur','sharpen','custombrush'].includes(tool)) pushUndo();
   const ctx=layers[activeLayer].getContext('2d');
   if(tool==='picker'){ setBrushColor(sampleComposite(p.x,p.y)); return; }
   if(tool==='fill'){ floodFill(ctx, p.x, p.y, brush.hex); renderComposite(); return; }
@@ -1280,6 +1316,7 @@ function beginStroke(p, e){
     snap.getContext('2d').drawImage(layers[activeLayer],0,0); stroke.snap=snap; stroke.start=p; return;
   }
   if(tool==='shapes'){ return; }
+  if(tool==='custombrush'){ customBrushDab(p.x, p.y); stroke.lastStamp=p; renderComposite(); return; }
   // dab tools: stamp a first dab
   strokeDabAt(p, p, 0);
 }
@@ -1332,6 +1369,14 @@ function moveStroke(p){
     ctx.save(); ctx.beginPath(); ctx.arc(p.x,p.y,r,0,7); ctx.clip();
     ctx.drawImage(stroke.snap, sx-r, sy-r, r*2, r*2, p.x-r, p.y-r, r*2, r*2); ctx.restore();
     stroke.last=p; renderComposite(); return;
+  }
+  if(tool==='custombrush'){
+    const br=activeBrush(); const spacing=Math.max(2,(br?br.size:120)*0.28);
+    const from=stroke.lastStamp||stroke.last;
+    const dist=Math.hypot(p.x-from.x, p.y-from.y);
+    const steps=Math.max(1, Math.ceil(dist/spacing));
+    for(let i=1;i<=steps;i++){ const t=i/steps; customBrushDab(from.x+(p.x-from.x)*t, from.y+(p.y-from.y)*t); }
+    stroke.lastStamp=p; stroke.last=p; renderComposite(); return;
   }
   if(['paint','rainbow','glow','lighten','darken','eraser'].includes(tool)){
     // midpoint smoothing + tight dab spacing => smooth arcs, no hard angles
@@ -1540,109 +1585,68 @@ $('#btnBuilderSave').addEventListener('click', ()=>{
   $('#accBuilder').classList.add('hidden'); renderPaintSide();
   toast('Saved “'+name+'” to your Library');
 });
-/* ================= stickers ================= */
-function starPath(ctx, spikes, outer, inner){
-  ctx.beginPath();
-  for(let i=0;i<spikes*2;i++){ const r=i%2? inner:outer; const a=(Math.PI*i)/spikes - Math.PI/2;
-    const x=Math.cos(a)*r, y=Math.sin(a)*r; i? ctx.lineTo(x,y): ctx.moveTo(x,y); }
-  ctx.closePath();
+/* ================= stamps & stickers — ONE library =================
+   Stamps are drawn on the checkerboard (Stamps tab). Stickers are made from
+   the Paint canvas. Both live in one picker, place the same way, and are
+   only ever their drawn pixels — no box, no backdrop behind them. */
+const _imgCache={};
+function libImage(src, cb){
+  if(_imgCache[src]){ cb(_imgCache[src]); return; }
+  const im=new Image(); im.onload=()=>{ _imgCache[src]=im; cb(im); }; im.src=src;
 }
-const STICKERS=[
- {cat:'Shapes', name:'Circle', draw:(c,s)=>{ c.beginPath(); c.arc(0,0,s/2,0,7); }},
- {cat:'Shapes', name:'Square', draw:(c,s)=>{ c.beginPath(); c.rect(-s/2,-s/2,s,s); }},
- {cat:'Shapes', name:'Triangle', draw:(c,s)=>{ c.beginPath(); c.moveTo(0,-s/2); c.lineTo(s/2,s/2); c.lineTo(-s/2,s/2); c.closePath(); }},
- {cat:'Shapes', name:'Diamond', draw:(c,s)=>{ c.beginPath(); c.moveTo(0,-s/2); c.lineTo(s/2,0); c.lineTo(0,s/2); c.lineTo(-s/2,0); c.closePath(); }},
- {cat:'Shapes', name:'Star', draw:(c,s)=>starPath(c,5,s/2,s/5)},
- {cat:'Shapes', name:'Heart', draw:(c,s)=>{ const t=s/2; c.beginPath(); c.moveTo(0,t*0.85);
-   c.bezierCurveTo(-t*1.25,-t*0.1,-t*0.62,-t*1.05,0,-t*0.38); c.bezierCurveTo(t*0.62,-t*1.05,t*1.25,-t*0.1,0,t*0.85); c.closePath(); }},
- {cat:'Shapes', name:'Hexagon', draw:(c,s)=>{ c.beginPath(); for(let i=0;i<6;i++){ const a=Math.PI/3*i; const x=Math.cos(a)*s/2, y=Math.sin(a)*s/2; i?c.lineTo(x,y):c.moveTo(x,y);} c.closePath(); }},
- {cat:'Shapes', name:'Cross', draw:(c,s)=>{ const w=s/6; c.beginPath(); c.rect(-w,-s/2,2*w,s); c.rect(-s/2,-w,s,2*w); }},
- {cat:'Symbols', name:'Spiral', stroke:true, draw:(c,s)=>{ c.beginPath(); for(let a=0;a<Math.PI*7;a+=0.15){ const r=(a/(Math.PI*7))*s/2; const x=Math.cos(a)*r, y=Math.sin(a)*r; a?c.lineTo(x,y):c.moveTo(x,y);} }},
- {cat:'Symbols', name:'Lightning', draw:(c,s)=>{ c.beginPath(); c.moveTo(s*0.08,-s/2); c.lineTo(-s*0.28,s*0.08); c.lineTo(-s*0.02,s*0.08); c.lineTo(-s*0.10,s/2); c.lineTo(s*0.30,-s*0.10); c.lineTo(s*0.03,-s*0.10); c.closePath(); }},
- {cat:'Symbols', name:'Crown', draw:(c,s)=>{ c.beginPath(); c.moveTo(-s/2,s*0.32); c.lineTo(-s/2,-s*0.18); c.lineTo(-s*0.22,s*0.06); c.lineTo(0,-s*0.34); c.lineTo(s*0.22,s*0.06); c.lineTo(s/2,-s*0.18); c.lineTo(s/2,s*0.32); c.closePath(); }},
- {cat:'Symbols', name:'Smiley', draw:(c,s)=>{ c.beginPath(); c.arc(0,0,s/2,0,7); c.moveTo(s*0.28,s*0.05); c.arc(0,s*0.02,s*0.28,0.15*Math.PI,0.85*Math.PI);
-   c.moveTo(-s*0.14,-s*0.16); c.arc(-s*0.17,-s*0.16,s*0.045,0,7); c.moveTo(s*0.20,-s*0.16); c.arc(s*0.17,-s*0.16,s*0.045,0,7); }},
- {cat:'Symbols', name:'Peace', stroke:true, draw:(c,s)=>{ c.beginPath(); c.arc(0,0,s/2,0,7); c.moveTo(0,-s/2); c.lineTo(0,s/2); c.moveTo(0,0); c.lineTo(-s*0.35,s*0.35); c.moveTo(0,0); c.lineTo(s*0.35,s*0.35); }},
- {cat:'Symbols', name:'Moon', draw:(c,s)=>{ c.beginPath(); c.arc(0,0,s/2,-0.35*Math.PI,0.65*Math.PI,true); c.arc(s*0.22,0,s*0.38,0.6*Math.PI,-0.42*Math.PI,false); c.closePath(); }},
- {cat:'Symbols', name:'Sun', draw:(c,s)=>{ c.beginPath(); c.arc(0,0,s*0.26,0,7);
-   for(let i=0;i<8;i++){ const a=Math.PI/4*i; c.moveTo(Math.cos(a)*s*0.33,Math.sin(a)*s*0.33); c.lineTo(Math.cos(a)*s/2,Math.sin(a)*s/2);} }},
- {cat:'Nature', name:'Leaf', draw:(c,s)=>{ c.beginPath(); c.moveTo(0,-s/2); c.quadraticCurveTo(s/2,0,0,s/2); c.quadraticCurveTo(-s/2,0,0,-s/2); c.closePath(); }},
- {cat:'Nature', name:'Flower', draw:(c,s)=>{ c.beginPath(); for(let i=0;i<5;i++){ const a=Math.PI*2*i/5-Math.PI/2; const x=Math.cos(a)*s*0.27, y=Math.sin(a)*s*0.27;
-   c.moveTo(x+s*0.17,y); c.arc(x,y,s*0.17,0,7); } c.moveTo(s*0.1,0); c.arc(0,0,s*0.1,0,7); }},
- {cat:'Nature', name:'Tree', draw:(c,s)=>{ c.beginPath(); c.moveTo(0,-s/2); c.lineTo(s*0.3,-s*0.05); c.lineTo(s*0.12,-s*0.05); c.lineTo(s*0.36,s*0.28); c.lineTo(-s*0.36,s*0.28); c.lineTo(-s*0.12,-s*0.05); c.lineTo(-s*0.3,-s*0.05); c.closePath(); c.rect(-s*0.06,s*0.28,s*0.12,s*0.2); }},
- {cat:'Nature', name:'Cloud', draw:(c,s)=>{ c.beginPath(); c.arc(-s*0.2,s*0.08,s*0.2,0,7); c.arc(0,-s*0.06,s*0.27,0,7); c.arc(s*0.22,s*0.08,s*0.19,0,7); c.rect(-s*0.2,0,s*0.42,s*0.16); }},
- {cat:'Nature', name:'Raindrop', draw:(c,s)=>{ c.beginPath(); c.moveTo(0,-s/2); c.bezierCurveTo(s*0.3,-s*0.05,s*0.34,s*0.12,s*0.34,s*0.24); c.arc(0,s*0.24,s*0.34,0,Math.PI,false); c.bezierCurveTo(-s*0.34,s*0.12,-s*0.3,-s*0.05,0,-s/2); }},
- {cat:'Splats', name:'Burst', draw:(c,s)=>starPath(c,12,s/2,s*0.30)},
- {cat:'Splats', name:'Splat', draw:(c,s)=>{ c.beginPath(); const pts=11; for(let i=0;i<=pts;i++){ const a=Math.PI*2*i/pts; const rr=s/2*(0.68+0.3*Math.abs(Math.sin(i*2.7)));
-   const x=Math.cos(a)*rr, y=Math.sin(a)*rr; i?c.lineTo(x,y):c.moveTo(x,y);} c.closePath(); }},
- {cat:'Splats', name:'Donut', draw:(c,s)=>{ c.beginPath(); c.arc(0,0,s/2,0,7); c.arc(0,0,s*0.22,0,7,true); }},
- {cat:'Letters & Numbers', name:'A', text:'A'}, {cat:'Letters & Numbers', name:'B', text:'B'},
- {cat:'Letters & Numbers', name:'K', text:'K'}, {cat:'Letters & Numbers', name:'X', text:'X'},
- {cat:'Letters & Numbers', name:'1', text:'1'}, {cat:'Letters & Numbers', name:'2', text:'2'}, {cat:'Letters & Numbers', name:'7', text:'7'}
-];
-function drawStickerDef(ctx, def, size, fillStyle){
-  ctx.save();
-  if(def.text){ ctx.fillStyle=fillStyle; ctx.font='900 '+size+'px Arial, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(def.text,0,size*0.04); }
-  else if(def.stroke){ ctx.strokeStyle=fillStyle; ctx.lineWidth=Math.max(2,size*0.085); ctx.lineCap='round'; def.draw(ctx,size); ctx.stroke(); }
-  else { def.draw(ctx,size); ctx.fillStyle=fillStyle; ctx.fill(); }
-  ctx.restore();
-}
-function stickerFillStyle(ctx, x, y, size){
-  if($('#stkFill').value==='gradient'){ const g=ctx.createLinearGradient(x-size/2,y-size/2,x+size/2,y+size/2);
-    g.addColorStop(0,brush.hex); g.addColorStop(1,partnerHex); return g; }
-  return brush.hex;
-}
-function makeGhost(kind, payload, label){
-  ghost={ kind, def:payload.def||null, img:payload.img||null, label,
+let activeBrushId=null;
+function activeBrush(){ return (S.brushes||[]).find(b=>b.id===activeBrushId)||null; }
+function makeGhost(img, label){
+  ghost={ kind:'image', img, label,
     x:PW/2, y:PH/2, size:220, rot:0, flip:false, opacity:1,
     draw(ctx){
       ctx.save(); ctx.globalAlpha=this.opacity; ctx.translate(this.x,this.y); ctx.rotate(this.rot*Math.PI/180); ctx.scale(this.flip?-1:1,1);
-      if(this.kind==='image' && this.img){ ctx.drawImage(this.img,-this.size/2,-this.size/2,this.size,this.size); }
-      else if(this.def){ drawStickerDef(ctx, this.def, this.size, stickerFillStyle(ctx,0,0,this.size)); }
+      ctx.drawImage(this.img,-this.size/2,-this.size/2,this.size,this.size);
       ctx.restore();
-      ctx.save(); ctx.strokeStyle='rgba(0,199,217,0.8)'; ctx.setLineDash([8,6]); ctx.lineWidth=2;
-      ctx.strokeRect(this.x-this.size/2,this.y-this.size/2,this.size,this.size); ctx.restore();
     }};
   $('#stickerCtl').classList.remove('hidden'); $('#stickerName').textContent=label+' — drag to place';
   $('#stkSize').value=220; $('#stkRot').value=0; $('#stkOp').value=100;
   $('#stkSizeVal').textContent='220'; $('#stkRotVal').textContent='0'; $('#stkOpVal').textContent='100';
   renderComposite();
 }
+function artButton(item, onTap){
+  const b=document.createElement('button'); b.className='art'; b.title=item.name;
+  const img=document.createElement('img'); img.src=item.img; img.alt=item.name;
+  b.appendChild(img); b.addEventListener('click', onTap); return b;
+}
 function renderStickerLib(){
   const lib=$('#stickerLib'); lib.innerHTML='';
-  const cats=[...new Set(STICKERS.map(s=>s.cat))];
-  cats.forEach(cat=>{
-    const h=document.createElement('div'); h.className='lbl'; h.textContent=cat; lib.appendChild(h);
+  const section=(title, items, emptyText, onTap)=>{
+    const h=document.createElement('div'); h.className='lbl'; h.textContent=title; lib.appendChild(h);
+    if(!items.length){ const n=document.createElement('div'); n.className='small'; n.textContent=emptyText; lib.appendChild(n); return; }
     const grid=document.createElement('div'); grid.className='stk-grid';
-    STICKERS.filter(s=>s.cat===cat).forEach(def=>{
-      const b=document.createElement('button'); b.title=def.name;
-      const cv=document.createElement('canvas'); cv.width=96; cv.height=96;
-      const cx=cv.getContext('2d'); cx.translate(48,48); drawStickerDef(cx, def, 74, '#e8e2f5');
-      b.appendChild(cv);
-      b.addEventListener('click', ()=>makeGhost('shape', {def}, def.name));
+    items.forEach(it=>grid.appendChild(artButton(it, ()=>onTap(it))));
+    lib.appendChild(grid);
+  };
+  section('Stamps — made on the checkerboard', S.stamps, 'None yet — draw some in the Stamps tab.',
+    st=>libImage(st.img, im=>makeGhost(im, st.name)));
+  section('Stickers — made from your paintings', S.stickers, 'None yet — paint something, then tap “Make sticker from my painting” above.',
+    st=>libImage(st.img, im=>makeGhost(im, st.name)));
+  const h=document.createElement('div'); h.className='lbl'; h.textContent='My brushes — tap one, then paint with it'; lib.appendChild(h);
+  if(!S.brushes.length){ const n=document.createElement('div'); n.className='small'; n.textContent='None yet — build one in the Brushes tab.'; lib.appendChild(n); }
+  else{
+    const grid=document.createElement('div'); grid.className='stk-grid';
+    S.brushes.forEach(br=>{
+      const b=artButton(br, ()=>{
+        activeBrushId=br.id; libImage(br.img, ()=>{});
+        $('#toolSel').value='custombrush'; $('#shapeOpts').classList.add('hidden');
+        renderStickerLib(); toast('Brush loaded: “'+br.name+'” — paint with it');
+      });
+      if(br.id===activeBrushId) b.classList.add('armed');
       grid.appendChild(b);
     });
     lib.appendChild(grid);
-  });
-  const h=document.createElement('div'); h.className='lbl'; h.textContent='My stamps'; lib.appendChild(h);
-  const grid=document.createElement('div'); grid.className='stk-grid';
-  if(!S.stamps.length){ const n=document.createElement('div'); n.className='small'; n.textContent='None yet — draw some in the Stamps tab.'; lib.appendChild(n); }
-  S.stamps.forEach(st=>{
-    const b=document.createElement('button'); b.title=st.name;
-    const img=document.createElement('img'); img.src=st.img; img.alt=st.name;
-    b.appendChild(img);
-    b.addEventListener('click', ()=>{
-      const im=new Image(); im.onload=()=>makeGhost('image', {img:im}, st.name); im.src=st.img;
-    });
-    grid.appendChild(b);
-  });
-  lib.appendChild(grid);
+  }
 }
 /* ghost controls */
 $('#stkSize').addEventListener('input', e=>{ if(ghost){ ghost.size=+e.target.value; $('#stkSizeVal').textContent=e.target.value; renderComposite(); } });
 $('#stkRot').addEventListener('input', e=>{ if(ghost){ ghost.rot=+e.target.value; $('#stkRotVal').textContent=e.target.value; renderComposite(); } });
 $('#stkOp').addEventListener('input', e=>{ if(ghost){ ghost.opacity=e.target.value/100; $('#stkOpVal').textContent=e.target.value; renderComposite(); } });
-$('#stkFill').addEventListener('change', ()=>renderComposite());
 $('#btnStkFlip').addEventListener('click', ()=>{ if(ghost){ ghost.flip=!ghost.flip; renderComposite(); } });
 $('#btnStkCancel').addEventListener('click', ()=>{ ghost=null; $('#stickerCtl').classList.add('hidden'); renderComposite(); });
 $('#btnStkStamp').addEventListener('click', ()=>{
@@ -1651,8 +1655,7 @@ $('#btnStkStamp').addEventListener('click', ()=>{
   const ctx=layers[activeLayer].getContext('2d');
   const g=ghost;
   ctx.save(); ctx.globalAlpha=g.opacity; ctx.translate(g.x,g.y); ctx.rotate(g.rot*Math.PI/180); ctx.scale(g.flip?-1:1,1);
-  if(g.kind==='image'&&g.img) ctx.drawImage(g.img,-g.size/2,-g.size/2,g.size,g.size);
-  else if(g.def) drawStickerDef(ctx, g.def, g.size, stickerFillStyle(ctx,0,0,g.size));
+  ctx.drawImage(g.img,-g.size/2,-g.size/2,g.size,g.size);
   ctx.restore();
   ghost=null; $('#stickerCtl').classList.add('hidden'); renderComposite(); toast('Stamped!');
 });
@@ -1663,6 +1666,24 @@ $('#btnStkStamp').addEventListener('click', ()=>{
   paintCanvas.addEventListener('pointermove', e=>{ if(!ghost||!gdrag) return; const p=evPos(e); ghost.x=p.x-gdrag.dx; ghost.y=p.y-gdrag.dy; renderComposite(); });
   ['pointerup','pointercancel'].forEach(ev=>paintCanvas.addEventListener(ev, ()=>gdrag=null));
 })();
+/* make a sticker from the painting: the painted layers only (no canvas
+   color, no trace photo), trimmed tight to the artwork */
+$('#btnMakeSticker').addEventListener('click', ()=>{
+  const flat=document.createElement('canvas'); flat.width=PW; flat.height=PH;
+  const fx=flat.getContext('2d'); layers.forEach(c=>fx.drawImage(c,0,0));
+  const d=fx.getImageData(0,0,PW,PH).data;
+  let x0=PW,y0=PH,x1=-1,y1=-1;
+  for(let y=0;y<PH;y++) for(let x=0;x<PW;x++){ if(d[(y*PW+x)*4+3]>8){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } }
+  if(x1<0){ toast('Nothing painted yet — paint something first'); return; }
+  const w=x1-x0+1, h=y1-y0+1, side=Math.max(w,h), sc=480/side;
+  const out=document.createElement('canvas'); out.width=out.height=480;
+  out.getContext('2d').drawImage(flat, x0,y0,w,h, (480-w*sc)/2,(480-h*sc)/2, w*sc, h*sc);
+  const name=prompt('Name your sticker:', 'Sticker');
+  if(!name || !name.trim()) return;
+  S.stickers.push({id:uid(), name:name.trim(), img:out.toDataURL('image/png')});
+  saveState(); renderStickerLib(); toast('Sticker “'+name.trim()+'” saved — it is in the list below');
+});
+
 
 /* ================= stamps tab ================= */
 const stampCanvas=$('#stampCanvas'), sctx=stampCanvas.getContext('2d');
@@ -1743,7 +1764,7 @@ $('#btnStampSave').addEventListener('click', ()=>{
   if(editingStampId){ const st=S.stamps.find(x=>x.id===editingStampId); if(st){ st.name=name; st.img=img; } editingStampId=null; $('#btnStampSave').textContent='Save stamp'; }
   else S.stamps.push({id:uid(), name, img});
   saveState(); renderStampList(); renderStickerLib();
-  toast('Stamp “'+name+'” saved — find it in Paint under My stamps');
+  toast('Stamp “'+name+'” saved — find it in Paint under Stamps & stickers');
 });
 function renderStampList(){
   const list=$('#stampList'); list.innerHTML='';
@@ -1764,6 +1785,173 @@ function renderStampList(){
     del.addEventListener('click', ()=>{ if(confirm('Delete stamp “'+st.name+'”?')){ S.stamps=S.stamps.filter(x=>x.id!==st.id); saveState(); renderStampList(); renderStickerLib(); } });
     item.appendChild(th); item.appendChild(nm); item.appendChild(ed); item.appendChild(ren); item.appendChild(del);
     list.appendChild(item);
+  });
+}
+
+/* ================= brushes — layered stamps as a brush tip ================= */
+const BRUSH_GRADIENTS={
+  none:null,
+  fire:['#FF6E00','#FFE700'],
+  ocean:['#008D9E','#00FFB8'],
+  sunset:['#F54959','#FFA400'],
+  berry:['#8D3F4E','#CF6172'],
+  gold:['#C76800','#FAC525'],
+  mono:['#1c1c22','#f2f2f5']
+};
+let brushDraft=null, editingBrushId=null;
+function newBrushDraft(){ return {name:'', size:220, rotation:0, layers:[]}; }
+function ensureLibImages(srcs, cb){
+  const uniq=[...new Set(srcs)];
+  if(!uniq.length){ cb(); return; }
+  let n=0; uniq.forEach(s=>libImage(s, ()=>{ if(++n===uniq.length) cb(); }));
+}
+function composeBrushCanvas(layersArr){
+  const out=document.createElement('canvas'); out.width=out.height=480;
+  const octx=out.getContext('2d');
+  layersArr.forEach(L=>{
+    const im=_imgCache[L.src]; if(!im) return;
+    const lc=document.createElement('canvas'); lc.width=lc.height=480;
+    const g=lc.getContext('2d');
+    g.drawImage(im,0,0,480,480);
+    const grad=BRUSH_GRADIENTS[L.gradient];
+    if(grad){
+      g.globalCompositeOperation='source-atop';
+      const lg=g.createLinearGradient(0,0,480,480); lg.addColorStop(0,grad[0]); lg.addColorStop(1,grad[1]);
+      g.fillStyle=lg; g.fillRect(0,0,480,480); g.globalCompositeOperation='source-over';
+    }
+    if(L.texture==='grain'){
+      g.globalCompositeOperation='source-atop';
+      for(let i=0;i<2600;i++){ g.fillStyle=Math.random()<0.5?'rgba(0,0,0,0.20)':'rgba(255,255,255,0.20)'; g.fillRect(Math.random()*480, Math.random()*480, 2, 2); }
+      g.globalCompositeOperation='source-over';
+    }
+    if(L.texture==='speckle'){
+      g.globalCompositeOperation='destination-out';
+      for(let i=0;i<380;i++){ g.globalAlpha=0.55; g.beginPath(); g.arc(Math.random()*480, Math.random()*480, 1+Math.random()*3.5, 0, 7); g.fill(); }
+      g.globalAlpha=1; g.globalCompositeOperation='source-over';
+    }
+    octx.save(); octx.globalAlpha=(L.opacity==null?1:L.opacity);
+    if(L.texture==='soft') octx.filter='blur(2px)';
+    octx.drawImage(lc,0,0); octx.restore();
+  });
+  return out;
+}
+function renderBrushPreview(){
+  const cv=$('#brushPreview'); if(!cv || !brushDraft) return;
+  const g=cv.getContext('2d');
+  g.clearRect(0,0,480,480);
+  if(!brushDraft.layers.length) return;
+  ensureLibImages(brushDraft.layers.map(l=>l.src), ()=>{
+    const comp=composeBrushCanvas(brushDraft.layers);
+    const s=Math.min(brushDraft.size, 440);
+    g.clearRect(0,0,480,480);
+    g.save(); g.translate(240,240); g.rotate(brushDraft.rotation*Math.PI/180); g.drawImage(comp,-s/2,-s/2,s,s); g.restore();
+  });
+}
+function renderBrushLayers(){
+  const wrap=$('#brushLayers'); if(!wrap || !brushDraft) return;
+  wrap.innerHTML='';
+  if(!brushDraft.layers.length){ wrap.innerHTML='<div class="small">No layers yet — add one of your stamps below.</div>'; return; }
+  [...brushDraft.layers].map((L,i)=>({L,i})).reverse().forEach(({L,i})=>{
+    const row=document.createElement('div'); row.className='blayer';
+    const im=document.createElement('img'); im.src=L.src; im.alt=L.name; row.appendChild(im);
+    const ctl=document.createElement('div'); ctl.className='ctl';
+    const title=document.createElement('div'); title.style.cssText='font-weight:800; font-size:13px;';
+    title.textContent=L.name+(i===brushDraft.layers.length-1?' · top layer':'');
+    ctl.appendChild(title);
+    const opL=document.createElement('label'); opL.className='lbl';
+    opL.textContent='See-through · '+Math.round((L.opacity==null?1:L.opacity)*100)+'%';
+    const op=document.createElement('input'); op.type='range'; op.min=5; op.max=100;
+    op.value=Math.round((L.opacity==null?1:L.opacity)*100);
+    op.addEventListener('input', ()=>{ L.opacity=op.value/100; opL.textContent='See-through · '+op.value+'%'; renderBrushPreview(); });
+    ctl.appendChild(opL); ctl.appendChild(op);
+    const gs=document.createElement('select');
+    gs.innerHTML='<option value="none">Gradient — none</option><option value="fire">Gradient — Fire</option><option value="ocean">Gradient — Ocean</option><option value="sunset">Gradient — Sunset</option><option value="berry">Gradient — Berry</option><option value="gold">Gradient — Gold</option><option value="mono">Gradient — Black to white</option>';
+    gs.value=L.gradient||'none';
+    gs.addEventListener('change', ()=>{ L.gradient=gs.value; renderBrushPreview(); });
+    ctl.appendChild(gs);
+    const ts=document.createElement('select');
+    ts.innerHTML='<option value="none">Texture — none</option><option value="grain">Texture — Grain</option><option value="speckle">Texture — Speckle</option><option value="soft">Texture — Soft edge</option>';
+    ts.value=L.texture||'none';
+    ts.addEventListener('change', ()=>{ L.texture=ts.value; renderBrushPreview(); });
+    ctl.appendChild(ts);
+    row.appendChild(ctl);
+    const btns=document.createElement('div'); btns.style.cssText='display:flex; flex-direction:column; gap:4px;';
+    const up=document.createElement('button'); up.className='btn small'; up.textContent='↑'; up.title='Move up — paints more on top';
+    up.addEventListener('click', ()=>{ if(i<brushDraft.layers.length-1){ const t=brushDraft.layers[i]; brushDraft.layers[i]=brushDraft.layers[i+1]; brushDraft.layers[i+1]=t; renderBrushLayers(); renderBrushPreview(); } });
+    const dn=document.createElement('button'); dn.className='btn small'; dn.textContent='↓'; dn.title='Move down';
+    dn.addEventListener('click', ()=>{ if(i>0){ const t=brushDraft.layers[i]; brushDraft.layers[i]=brushDraft.layers[i-1]; brushDraft.layers[i-1]=t; renderBrushLayers(); renderBrushPreview(); } });
+    const rm=document.createElement('button'); rm.className='btn small ghost'; rm.textContent='✕'; rm.title='Remove layer';
+    rm.addEventListener('click', ()=>{ brushDraft.layers.splice(i,1); renderBrushLayers(); renderBrushPreview(); });
+    btns.appendChild(up); btns.appendChild(dn); btns.appendChild(rm);
+    row.appendChild(btns);
+    wrap.appendChild(row);
+  });
+}
+function renderBrushPicker(){
+  const grid=$('#brushPickerGrid'); grid.innerHTML='';
+  const items=[...S.stamps, ...S.stickers];
+  if(!items.length){ grid.innerHTML='<div class="small">No stamps or stickers yet — draw a stamp in the Stamps tab first.</div>'; return; }
+  items.forEach(it=>grid.appendChild(artButton(it, ()=>{
+    brushDraft.layers.push({src:it.img, name:it.name, opacity:1, gradient:'none', texture:'none'});
+    $('#brushPicker').classList.add('hidden');
+    renderBrushLayers(); renderBrushPreview();
+  })));
+}
+$('#btnBrushAddLayer').addEventListener('click', ()=>{ renderBrushPicker(); $('#brushPicker').classList.toggle('hidden'); });
+$('#brushBSize').addEventListener('input', e=>{ if(!brushDraft) brushDraft=newBrushDraft(); brushDraft.size=+e.target.value; $('#brushBSizeVal').textContent=e.target.value; renderBrushPreview(); });
+$('#brushBRot').addEventListener('input', e=>{ if(!brushDraft) brushDraft=newBrushDraft(); brushDraft.rotation=+e.target.value; $('#brushBRotVal').textContent=e.target.value; renderBrushPreview(); });
+$('#btnBrushSave').addEventListener('click', ()=>{
+  if(!brushDraft || !brushDraft.layers.length){ toast('Add at least one stamp layer first'); return; }
+  const name=$('#brushName').value.trim();
+  if(!name){ toast('Give your brush a name first'); return; }
+  ensureLibImages(brushDraft.layers.map(l=>l.src), ()=>{
+    const img=composeBrushCanvas(brushDraft.layers).toDataURL('image/png');
+    const data={name, size:brushDraft.size, rotation:brushDraft.rotation, layers:brushDraft.layers.map(l=>({...l})), img};
+    if(editingBrushId){ const b=S.brushes.find(x=>x.id===editingBrushId); if(b) Object.assign(b, data); }
+    else S.brushes.push(Object.assign({id:uid()}, data));
+    editingBrushId=null; $('#btnBrushSave').textContent='Save brush';
+    saveState(); renderBrushSaved(); renderStickerLib();
+    toast('Brush “'+name+'” saved — find it in Paint under My brushes');
+  });
+});
+function renderBrushSaved(){
+  const list=$('#brushSavedList'); if(!list) return;
+  list.innerHTML='';
+  if(!S.brushes.length){ list.innerHTML='<div class="note">No brushes yet. Stack a couple of stamps above and save your first one.</div>'; return; }
+  S.brushes.forEach(br=>{
+    const item=document.createElement('div'); item.className='stamp-item';
+    const th=document.createElement('div'); th.className='thumb'; const im=document.createElement('img'); im.src=br.img; th.appendChild(im);
+    const nm=document.createElement('div'); nm.style.cssText='flex:1;font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'; nm.textContent=br.name;
+    const ed=document.createElement('button'); ed.className='btn small'; ed.textContent='Edit';
+    ed.addEventListener('click', ()=>{
+      editingBrushId=br.id;
+      brushDraft={name:br.name, size:br.size, rotation:br.rotation, layers:br.layers.map(l=>({...l}))};
+      $('#brushName').value=br.name;
+      $('#brushBSize').value=br.size; $('#brushBSizeVal').textContent=br.size;
+      $('#brushBRot').value=br.rotation; $('#brushBRotVal').textContent=br.rotation;
+      $('#btnBrushSave').textContent='Save changes';
+      renderBrushLayers(); renderBrushPreview();
+      toast('Editing brush “'+br.name+'”');
+    });
+    const del=document.createElement('button'); del.className='btn small ghost'; del.textContent='🗑';
+    del.addEventListener('click', ()=>{ if(confirm('Delete brush “'+br.name+'”?')){ S.brushes=S.brushes.filter(x=>x.id!==br.id); if(activeBrushId===br.id) activeBrushId=null; saveState(); renderBrushSaved(); renderStickerLib(); } });
+    item.appendChild(th); item.appendChild(nm); item.appendChild(ed); item.appendChild(del);
+    list.appendChild(item);
+  });
+}
+function renderBrushTab(){
+  if(!brushDraft) brushDraft=newBrushDraft();
+  renderBrushLayers(); renderBrushPreview(); renderBrushSaved();
+}
+/* painting with a saved brush: the layered stack is the tip */
+function customBrushDab(x, y){
+  const br=activeBrush(); if(!br) return;
+  const im=_imgCache[br.img];
+  if(!im){ libImage(br.img, ()=>{}); return; }
+  const ctx=layers[activeLayer].getContext('2d');
+  symPoints(x,y).forEach(([sx,sy])=>{
+    ctx.save(); ctx.translate(sx,sy); ctx.rotate(br.rotation*Math.PI/180);
+    ctx.drawImage(im,-br.size/2,-br.size/2,br.size,br.size); ctx.restore();
   });
 }
 
