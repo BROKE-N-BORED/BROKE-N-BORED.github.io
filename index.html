@@ -130,9 +130,9 @@ label.lbl{font-size:12px; font-weight:700; color:var(--muted); display:block; ma
 #paintSide .side-scroll{overflow-y:auto; flex:1; overscroll-behavior:contain; padding:6px;}
 .side-pal{margin-bottom:10px;}
 .side-pal .sp-name{font-size:10px; font-weight:800; color:var(--muted); margin:2px 1px 4px; line-height:1.25;}
-.side-pal .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:4px;}
-.side-pal .grid button{height:30px; border-radius:7px; border:2px solid transparent; cursor:pointer; padding:0;}
-.side-pal .grid button.on{border-color:#fff;}
+#paintSideScroll .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:4px;}
+#paintSideScroll .grid button{height:30px; border-radius:7px; border:2px solid transparent; cursor:pointer; padding:0;}
+#paintSideScroll .grid button.on{border-color:#fff;}
 #paintMain{flex:1 1 auto; display:flex; flex-direction:column; min-width:0; min-height:0;}
 #canvasHolder{flex:1 1 auto; display:flex; align-items:center; justify-content:center; padding:8px; min-height:0; background:
   radial-gradient(circle at 30% 20%, #201728, var(--bg2));}
@@ -280,6 +280,7 @@ canvas#stampCanvas{touch-action:none; border-radius:10px; box-shadow:0 4px 18px 
     <section class="view" id="view-paint">
       <div id="paintWrap">
         <aside id="paintSide">
+          <div style="padding:6px 6px 0;"><select id="paintPalSel" style="width:100%;"></select></div>
           <div class="side-scroll" id="paintSideScroll"></div>
           <button class="btn small teal" id="btnNewPalBuilder" style="margin:6px;">＋ new palette</button>
         </aside>
@@ -1125,25 +1126,32 @@ function setBrushColor(hex, name){
 }
 function setPartner(hex){ partnerHex=hex.toUpperCase(); TC($('#partnerChip'),partnerHex); }
 $('#btnSetPartner').addEventListener('click', ()=>{ partnerArm=!partnerArm; $('#btnSetPartner').textContent=partnerArm?'Tap a color…':'Set 2nd'; if(partnerArm) toast('Now tap any color to make it the 2nd (gradient) color'); });
+let paintPalId=null;
+try{ paintPalId=localStorage.getItem('cp.paintPal')||null; }catch(e){}
 function renderPaintSide(){
+  if(!paintPalId || !S.palettes.some(p=>p.id===paintPalId)) paintPalId=S.palettes.length?S.palettes[0].id:null;
+  const sel=$('#paintPalSel');
+  if(sel){
+    sel.innerHTML='';
+    S.palettes.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; sel.appendChild(o); });
+    if(paintPalId) sel.value=paintPalId;
+  }
   const side=$('#paintSideScroll'); side.innerHTML='';
-  S.palettes.forEach(p=>{
-    const wrap=document.createElement('div'); wrap.className='side-pal';
-    const nm=document.createElement('div'); nm.className='sp-name'; nm.textContent=p.name; wrap.appendChild(nm);
-    const grid=document.createElement('div'); grid.className='grid';
-    p.colors.forEach(c=>{
-      const b=document.createElement('button'); TC(b,c.hex); b.title=c.name+' '+c.hex;
-      if(c.hex.toUpperCase()===brush.hex) b.classList.add('on');
-      b.addEventListener('click', ()=>{
-        if(partnerArm){ setPartner(c.hex); partnerArm=false; $('#btnSetPartner').textContent='Set 2nd'; toast('2nd color: '+c.name); }
-        else setBrushColor(c.hex, c.name);
-      });
-      grid.appendChild(b);
+  const p=S.palettes.find(x=>x.id===paintPalId);
+  if(!p){ side.innerHTML='<div class="note" style="padding:4px">No palettes yet.</div>'; return; }
+  const grid=document.createElement('div'); grid.className='grid';
+  p.colors.forEach(c=>{
+    const b=document.createElement('button'); TC(b,c.hex); b.title=c.name+' '+c.hex;
+    if(c.hex.toUpperCase()===brush.hex) b.classList.add('on');
+    b.addEventListener('click', ()=>{
+      if(partnerArm){ setPartner(c.hex); partnerArm=false; $('#btnSetPartner').textContent='Set 2nd'; toast('2nd color: '+c.name); }
+      else setBrushColor(c.hex, c.name);
     });
-    wrap.appendChild(grid); side.appendChild(wrap);
+    grid.appendChild(b);
   });
-  if(!S.palettes.length) side.innerHTML='<div class="note" style="padding:4px">No palettes yet.</div>';
+  side.appendChild(grid);
 }
+$('#paintPalSel').addEventListener('change', e=>{ paintPalId=e.target.value; try{ localStorage.setItem('cp.paintPal', paintPalId); }catch(err){} renderPaintSide(); });
 function renderComposite(){
   pctx.clearRect(0,0,PW,PH);
   pctx.fillStyle=canvasBg; pctx.fillRect(0,0,PW,PH);
