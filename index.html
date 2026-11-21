@@ -593,6 +593,26 @@ function TC(el,hex){
   if(!url){ const cv=document.createElement('canvas'); cv.width=cv.height=4; const g=cv.getContext('2d'); g.fillStyle=hex; g.fillRect(0,0,4,4); url=_tcCache[hex]=cv.toDataURL(); }
   el.style.backgroundColor='transparent'; el.style.backgroundImage='url('+url+')'; el.style.backgroundSize='100% 100%'; el.style.backgroundRepeat='no-repeat';
 }
+/* Same forced-dark problem, second front: the checkerboard grids were CSS
+   gradients, and the phone's auto-dark darkens those to black. A TILED
+   background image gets darkened too — but a single full-size background
+   image is treated as content and left alone (that's why TC works). So each
+   grid gets one full checkerboard picture, stretched to fit, never tiled. */
+(function paintCheckerboardsAsImages(){
+  function checkerURL(size, sq, c1, c2){
+    const cv=document.createElement('canvas'); cv.width=cv.height=size;
+    const g=cv.getContext('2d');
+    for(let y=0;y<size/sq;y++) for(let x=0;x<size/sq;x++){ g.fillStyle=(x+y)%2? c2:c1; g.fillRect(x*sq,y*sq,sq,sq); }
+    return cv.toDataURL('image/png');
+  }
+  const big=checkerURL(480, 30, '#f4f4f4', '#c9c9c9');
+  const small=checkerURL(96, 12, '#5c5c68', '#43434e');
+  const st=document.createElement('style');
+  st.textContent=
+    '#stampCanvas,#brushPreview{background-image:url('+big+') !important; background-size:100% 100% !important; background-repeat:no-repeat !important;}'+
+    '.stk-grid button.art,.blayer img,.stamp-item .thumb{background-image:url('+small+') !important; background-size:100% 100% !important; background-repeat:no-repeat !important;}';
+  document.head.appendChild(st);
+})();
 
 /* ================= color math ================= */
 function hexToRgb(hex){hex=String(hex).replace('#',''); if(hex.length===3) hex=hex.split('').map(c=>c+c).join(''); const n=parseInt(hex,16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255};}
