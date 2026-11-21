@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#171219">
+<meta name="color-scheme" content="dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,6 +13,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='32' cy='38' r='20' fill='%23F54959'/%3E%3Ccircle cx='68' cy='38' r='20' fill='%2300C7D9'/%3E%3Ccircle cx='50' cy='66' r='20' fill='%23FFA400'/%3E%3C/svg%3E">
 <style>
 :root{
+  color-scheme:dark;
   --bg:#171219; --bg2:#100c14; --panel:#241b2e; --panel2:#2e2240; --line:#3d2f52;
   --text:#f4effc; --muted:#bcaed2; --faint:#8d7fa8;
   --accent:#f54959; --accent2:#ff7a5c; --teal:#00c7d9; --gold:#ffa400; --green:#37d67a;
@@ -547,6 +549,16 @@ let _uid=1000; const uid=()=>'id'+(++_uid)+Math.random().toString(36).slice(2,7)
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 function toast(msg){const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200);}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+/* TrueColor: paint swatch colors as a tiny canvas-image tile instead of a CSS
+   background color, so a phone browser's forced dark mode cannot recolor them
+   (it darkens background colors; it leaves images alone). */
+const _tcCache={};
+function TC(el,hex){
+  if(!el||!hex) return;
+  let url=_tcCache[hex];
+  if(!url){ const cv=document.createElement('canvas'); cv.width=cv.height=4; const g=cv.getContext('2d'); g.fillStyle=hex; g.fillRect(0,0,4,4); url=_tcCache[hex]=cv.toDataURL(); }
+  el.style.backgroundColor='transparent'; el.style.backgroundImage='url('+url+')'; el.style.backgroundSize='100% 100%'; el.style.backgroundRepeat='no-repeat';
+}
 
 /* ================= color math ================= */
 function hexToRgb(hex){hex=String(hex).replace('#',''); if(hex.length===3) hex=hex.split('').map(c=>c+c).join(''); const n=parseInt(hex,16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255};}
@@ -718,7 +730,7 @@ function renderChat(){
     if(m.text) { const t=document.createElement('div'); t.textContent=m.text; d.appendChild(t); }
     if(m.palette){
       const strip=document.createElement('div'); strip.className='strip';
-      m.palette.colors.forEach(c=>{ const s=document.createElement('div'); s.style.background=c.hex; strip.appendChild(s); });
+      m.palette.colors.forEach(c=>{ const s=document.createElement('div'); TC(s,c.hex); strip.appendChild(s); });
       d.appendChild(strip);
       const nm=document.createElement('div'); nm.className='names';
       nm.textContent=m.palette.colors.map(c=>c.name+' '+c.hex).join(' · ');
@@ -944,7 +956,7 @@ function paletteCard(p){
   const cnt=document.createElement('span'); cnt.className='pill'; cnt.textContent=p.colors.length+' colors'; head.appendChild(cnt);
   card.appendChild(head);
   const strip=document.createElement('div'); strip.className='strip';
-  p.colors.forEach(c=>{ const s=document.createElement('div'); s.style.background=c.hex; s.title=c.name+' '+c.hex; strip.appendChild(s); });
+  p.colors.forEach(c=>{ const s=document.createElement('div'); TC(s,c.hex); s.title=c.name+' '+c.hex; strip.appendChild(s); });
   card.appendChild(strip);
   const names=document.createElement('div'); names.className='small'; names.style.lineHeight='1.5';
   names.textContent=p.colors.map(c=>c.name).join(' · ');
@@ -1005,7 +1017,7 @@ function renderEdRows(){
   const wrap=$('#edRows'); wrap.innerHTML='';
   edDraft.forEach((c,i)=>{
     const row=document.createElement('div'); row.className='ed-row'+(edPicks.includes(i)?' picked':''); row.dataset.idx=i;
-    const sw=document.createElement('div'); sw.className='sw'; sw.style.background=c.hex;
+    const sw=document.createElement('div'); sw.className='sw'; TC(sw,c.hex);
     const pn=document.createElement('span'); pn.className='picknum'; pn.textContent=edPicks.indexOf(i)+1; sw.appendChild(pn);
     sw.addEventListener('click', ()=>togglePick(i));
     const meta=document.createElement('div'); meta.className='meta';
@@ -1059,7 +1071,7 @@ function updateBlendUI(){
   const used=new Map(); edDraft.forEach(c=>used.set(c.name,c.hex));
   const nm=uniqueColorName(mixed, used);
   $('#blendFormula').textContent=edPicks.length+' colors picked — here\'s the mix: '+edPicks.map((p,k)=>(k+1)+'. '+edDraft[p].name).join('  ·  ');
-  $('#blendSw').style.background=mixed; $('#blendName').textContent=nm; $('#blendHex').textContent=mixed;
+  TC($('#blendSw'),mixed); $('#blendName').textContent=nm; $('#blendHex').textContent=mixed;
   $('#blendResult').dataset.hex=mixed; $('#blendResult').dataset.name=nm;
   $('#blendResult').classList.remove('hidden');
 }
@@ -1106,12 +1118,12 @@ let ghost=null; // sticker ghost, managed by the sticker code
 const undoStack=[];
 function setBrushColor(hex, name){
   brush={hex:hex.toUpperCase(), name:name||baseColorName(hex)};
-  $('#curChip').style.background=brush.hex;
+  TC($('#curChip'),brush.hex);
   $('#curName').textContent=brush.name;
   $('#curHex').textContent=brush.hex;
   renderPaintSide();
 }
-function setPartner(hex){ partnerHex=hex.toUpperCase(); $('#partnerChip').style.background=partnerHex; }
+function setPartner(hex){ partnerHex=hex.toUpperCase(); TC($('#partnerChip'),partnerHex); }
 $('#btnSetPartner').addEventListener('click', ()=>{ partnerArm=!partnerArm; $('#btnSetPartner').textContent=partnerArm?'Tap a color…':'Set 2nd'; if(partnerArm) toast('Now tap any color to make it the 2nd (gradient) color'); });
 function renderPaintSide(){
   const side=$('#paintSideScroll'); side.innerHTML='';
@@ -1120,7 +1132,7 @@ function renderPaintSide(){
     const nm=document.createElement('div'); nm.className='sp-name'; nm.textContent=p.name; wrap.appendChild(nm);
     const grid=document.createElement('div'); grid.className='grid';
     p.colors.forEach(c=>{
-      const b=document.createElement('button'); b.style.background=c.hex; b.title=c.name+' '+c.hex;
+      const b=document.createElement('button'); TC(b,c.hex); b.title=c.name+' '+c.hex;
       if(c.hex.toUpperCase()===brush.hex) b.classList.add('on');
       b.addEventListener('click', ()=>{
         if(partnerArm){ setPartner(c.hex); partnerArm=false; $('#btnSetPartner').textContent='Set 2nd'; toast('2nd color: '+c.name); }
@@ -1450,7 +1462,7 @@ let padDabs=[], padResult=null;
 function renderPad(){
   const wrap=$('#padDabs'); wrap.innerHTML='';
   padDabs.forEach((hx,i)=>{
-    const d=document.createElement('span'); d.className='dabdot'; d.style.background=hx; d.title=hx;
+    const d=document.createElement('span'); d.className='dabdot'; TC(d,hx); d.title=hx;
     d.addEventListener('click', ()=>{ padDabs.splice(i,1); renderPad(); });
     wrap.appendChild(d);
   });
@@ -1464,7 +1476,7 @@ $('#btnPadMix').addEventListener('click', ()=>{
   const used=new Map(); padDabs.forEach(hx=>used.set(baseColorName(hx),hx));
   const name=uniqueColorName(hex, used);
   padResult={hex, name};
-  $('#padSw').style.background=hex; $('#padName').textContent=name; $('#padHex').textContent=hex;
+  TC($('#padSw'),hex); $('#padName').textContent=name; $('#padHex').textContent=hex;
   $('#padResult').classList.remove('hidden');
 });
 $('#btnPadUse').addEventListener('click', ()=>{ if(padResult) setBrushColor(padResult.hex, padResult.name); });
@@ -1475,7 +1487,8 @@ function renderBuilder(){
   if(!builderColors.length) wrap.innerHTML='<span class="small">No colors yet — add the brush color, or a mix from the pad.</span>';
   builderColors.forEach((c,i)=>{
     const chip=document.createElement('div'); chip.style.cssText='display:flex;align-items:center;gap:5px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:4px 7px;';
-    chip.innerHTML='<span style="width:18px;height:18px;border-radius:5px;background:'+c.hex+';display:inline-block"></span><span style="font-size:11px;font-weight:700">'+esc(c.name)+'</span>';
+    chip.innerHTML='<span data-tc="1" style="width:18px;height:18px;border-radius:5px;display:inline-block"></span><span style="font-size:11px;font-weight:700">'+esc(c.name)+'</span>';
+    TC(chip.querySelector('[data-tc]'), c.hex);
     chip.addEventListener('click', ()=>{ builderColors.splice(i,1); renderBuilder(); });
     wrap.appendChild(chip);
   });
@@ -1691,7 +1704,8 @@ function renderStampColors(){
   if(!p) return;
   p.colors.forEach(c=>{
     const b=document.createElement('button');
-    b.style.cssText='width:34px;height:34px;border-radius:9px;border:2px solid '+(stampColor===c.hex?'#fff':'transparent')+';background:'+c.hex+';cursor:pointer;';
+    b.style.cssText='width:34px;height:34px;border-radius:9px;border:2px solid '+(stampColor===c.hex?'#fff':'transparent')+';cursor:pointer;';
+    TC(b,c.hex);
     b.title=c.name+' '+c.hex;
     b.addEventListener('click', ()=>{ stampColor=c.hex; stampEraser=false; $('#btnStampEraser').textContent='🧽 Eraser'; $('#btnStampEraser').classList.remove('primary'); renderStampColors(); });
     wrap.appendChild(b);
