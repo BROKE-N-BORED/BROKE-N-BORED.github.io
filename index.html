@@ -193,7 +193,7 @@ canvas#stampCanvas{touch-action:none; border-radius:10px; box-shadow:0 4px 18px 
           <button class="btn primary" id="btnTakePhoto" style="flex:1">📷 Take a Photo</button>
           <button class="btn teal" id="btnPickPhoto" style="flex:1">🖼️ Pick a Photo</button>
         </div>
-        <div class="note" style="margin-top:6px">Send a picture, get a 12-color palette pulled from it — darkest to lightest, every color with its own name.</div>
+        <div class="note" style="margin-top:6px">Send a picture, get a palette pulled from it — every real color that's in it, darkest to lightest, every color with its own name. Three colors or twenty, no filler.</div>
       </div>
       <input type="file" id="fileCamera" accept="image/*" capture="environment" class="hidden">
       <input type="file" id="fileGallery" accept="image/*" class="hidden">
@@ -697,7 +697,7 @@ function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }cat
 S=loadState();
 if(!S.chat) S.chat=[];
 if(!S.chat.length){
-  S.chat.push({who:'sys', text:'Hey — this is your palette studio as a plain website. Send a photo and I\'ll pull a 12-color palette out of it. Your library came along from the old Space: '+S.palettes.length+' palettes are in the Library tab.'});
+  S.chat.push({who:'sys', text:'Hey — this is your palette studio as a plain website. Send a photo and I\'ll pull its real colors out as a palette — however many it actually has. Your library came along from the old Space: '+S.palettes.length+' palettes are in the Library tab.'});
   saveState();
 }
 /* ================= navigation ================= */
@@ -891,26 +891,38 @@ function extractPalette(canvas){
   let data; try{ data=ctx.getImageData(0,0,W,H).data; }catch(e){ return []; }
   const pts=[]; const step=Math.max(1, Math.floor((W*H)/22000));
   for(let p=0;p<W*H;p+=step){ const i=p*4; if(data[i+3]<128) continue; pts.push([data[i],data[i+1],data[i+2]]); }
-  if(pts.length<12) return [];
-  const K=12;
-  // seed centers from spread samples
-  let centers=[]; const stride=Math.max(1,Math.floor(pts.length/K));
-  for(let k=0;k<K;k++){ const s=pts[(k*stride+((Math.random()*stride)|0))%pts.length]; centers.push(s.slice()); }
-  const assign=new Array(pts.length).fill(0);
-  for(let iter=0;iter<14;iter++){
-    for(let i=0;i<pts.length;i++){ let best=0,bd=1e18; for(let k=0;k<K;k++){ const dx=pts[i][0]-centers[k][0],dy=pts[i][1]-centers[k][1],dz=pts[i][2]-centers[k][2]; const d=dx*dx+dy*dy+dz*dz; if(d<bd){bd=d;best=k;} } assign[i]=best; }
-    const sums=Array.from({length:K},()=>[0,0,0,0]);
-    for(let i=0;i<pts.length;i++){ const a=assign[i]; sums[a][0]+=pts[i][0]; sums[a][1]+=pts[i][1]; sums[a][2]+=pts[i][2]; sums[a][3]++; }
-    for(let k=0;k<K;k++){ if(sums[k][3]>0) centers[k]=[sums[k][0]/sums[k][3], sums[k][1]/sums[k][3], sums[k][2]/sums[k][3]]; }
+  if(pts.length<3) return [];
+  /* The palette is however many colors the picture really has — nothing is
+     invented to fill a quota, and no real color is thrown away to hit one.
+     A histogram over a 4x4x4 RGB grid finds the colors that are actually
+     there (each bucket's true average), a few polish passes settle the
+     centers on the picture's real tones, near-identical centers merge, and
+     dust drops. A 3-color picture gives 3 colors; a 16-color picture gives
+     16. Cap of 24 dominant colors keeps a rich photo readable. */
+  const buckets=new Map();
+  for(const pt of pts){
+    const key=((pt[0]>>6)<<4)|((pt[1]>>6)<<2)|(pt[2]>>6);
+    let b=buckets.get(key); if(!b){ b={r:0,g:0,b:0,n:0}; buckets.set(key,b); }
+    b.r+=pt[0]; b.g+=pt[1]; b.b+=pt[2]; b.n++;
   }
-  const counts=new Array(K).fill(0); assign.forEach(a=>counts[a]++);
-  let cols=centers.map((c,k)=>({hex:rgbToHex(c[0],c[1],c[2]), n:counts[k]})).filter(x=>x.n>0);
+  const minN=Math.max(3, pts.length*0.003);
+  let cols=[...buckets.values()].filter(b=>b.n>=minN).map(b=>({r:b.r/b.n, g:b.g/b.n, b:b.b/b.n, n:b.n}));
+  if(!cols.length) return [];
+  for(let iter=0;iter<6;iter++){
+    const sums=cols.map(()=>[0,0,0,0]);
+    for(const pt of pts){ let best=0,bd=1e18; for(let k=0;k<cols.length;k++){ const dx=pt[0]-cols[k].r, dy=pt[1]-cols[k].g, dz=pt[2]-cols[k].b; const d=dx*dx+dy*dy+dz*dz; if(d<bd){bd=d;best=k;} } const s=sums[best]; s[0]+=pt[0]; s[1]+=pt[1]; s[2]+=pt[2]; s[3]++; }
+    cols=cols.map((c,k)=> sums[k][3]>0 ? {r:sums[k][0]/sums[k][3], g:sums[k][1]/sums[k][3], b:sums[k][2]/sums[k][3], n:sums[k][3]} : c);
+  }
+  cols=cols.filter(c=>c.n>=minN);
   cols.sort((a,b)=>b.n-a.n);
-  cols=cols.slice(0,12);
-  // if clustering found fewer than 12, split the biggest groups by jitter
-  while(cols.length<12 && cols.length>0){ const src=cols[cols.length%cols.length]; const {r,g,b}=hexToRgb(src.hex);
-    cols.push({hex:rgbToHex(clamp(r*0.82,0,255),clamp(g*0.82,0,255),clamp(b*0.82,0,255)), n:1}); }
-  return sortDarkLight(cols.map(c=>({hex:c.hex})));
+  const merged=[];
+  for(const c of cols){
+    const m=merged.find(m=>{ const dx=m.r-c.r, dy=m.g-c.g, dz=m.b-c.b; return dx*dx+dy*dy+dz*dz<18*18; });
+    if(m){ const t=m.n+c.n; m.r=(m.r*m.n+c.r*c.n)/t; m.g=(m.g*m.n+c.g*c.n)/t; m.b=(m.b*m.n+c.b*c.n)/t; m.n=t; }
+    else merged.push({r:c.r, g:c.g, b:c.b, n:c.n});
+  }
+  merged.sort((a,b)=>b.n-a.n);
+  return sortDarkLight(merged.slice(0,24).map(c=>({hex:rgbToHex(c.r,c.g,c.b)})));
 }
 /* ================= library ================= */
 let combineMode=false; const combinePicks=new Set();
